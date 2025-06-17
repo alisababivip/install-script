@@ -1,213 +1,213 @@
 #!/bin/bash
 
-#downloads configure-linux.sh
-echo "INFO: Downloading dependencies - configure-linux.sh"
+#tải xuống configure-linux.sh
+echo "THÔNG TIN: Đang tải các phụ thuộc - configure-linux.sh"
 curl -s -o configure-linux.sh https://www.loggly.com/install/configure-linux.sh
 source configure-linux.sh "being-invoked"
 
-##########  Variable Declarations - Start  ##########
-#name of the current script
+##########  Khai báo biến - Bắt đầu  ##########
+#tên của script hiện tại
 SCRIPT_NAME=configure-nginx.sh
-#version of the current script
+#phiên bản của script hiện tại
 SCRIPT_VERSION=1.5
 
-#we have not found the nginx version yet at this point in the script
+#chưa tìm thấy phiên bản nginx tại thời điểm này trong script
 APP_TAG="\"nginx-version\":\"\""
 
-#name of the service, in this case nginx
+#tên dịch vụ, ở đây là nginx
 SERVICE="nginx"
-#name of nginx access log file
+#tên file log truy cập của nginx
 NGINX_ACCESS_LOG_FILE="access.log"
-#name of nginx error log file
+#tên file log lỗi của nginx
 NGINX_ERROR_LOG_FILE="error.log"
-#name and location of nginx syslog file
+#tên và vị trí file syslog của nginx
 NGINX_SYSLOG_CONFFILE=$RSYSLOG_ETCDIR_CONF/21-nginx.conf
-#name and location of nginx syslog backup file
+#tên và vị trí file backup syslog của nginx
 NGINX_SYSLOG_CONFFILE_BACKUP=$RSYSLOG_ETCDIR_CONF/21-nginx.conf.loggly.bk
 
-#this variable will hold the path to the nginx home
+#biến này sẽ lưu đường dẫn đến thư mục home của nginx
 LOGGLY_NGINX_HOME=
-#this variable will hold the value of the nginx log folder
+#biến này sẽ lưu giá trị thư mục log của nginx
 LOGGLY_NGINX_LOG_HOME=
-#this variable will hold the users nginx version
+#biến này sẽ lưu phiên bản nginx của người dùng
 NGINX_VERSION=
 
-MANUAL_CONFIG_INSTRUCTION="Manual instructions to configure nginx is available at https://www.loggly.com/docs/nginx-server-logs#manual. Rsyslog troubleshooting instructions are available at https://www.loggly.com/docs/troubleshooting-rsyslog/"
+HƯỚNG_DẪN_CẤU_HÌNH_THỦ_CÔNG="Hướng dẫn cấu hình thủ công nginx có tại https://www.loggly.com/docs/nginx-server-logs#manual. Hướng dẫn khắc phục sự cố Rsyslog tại https://www.loggly.com/docs/rsyslog-troubleshooting/."
 
-#this variable will hold if the check env function for linux is invoked
+#biến này sẽ xác định đã kiểm tra môi trường linux hay chưa
 NGINX_ENV_VALIDATED="false"
 
-#apache as tag sent with the logs
+#apache là tag gửi kèm log
 LOGGLY_FILE_TAG="nginx"
 
-#add tags to the logs
+#thêm tag vào log
 TAG=
 
 TLS_SENDING="true"
 
-##########  Variable Declarations - End  ##########
+##########  Khai báo biến - Kết thúc  ##########
 
-#check if nginx environment is compatible for Loggly
-checkNginxLogglyCompatibility() {
-  #check if the linux environment is compatible for Loggly
+#kiểm tra môi trường nginx có tương thích với Loggly không
+kiemTraTuongThichNginxLoggly() {
+  #kiểm tra môi trường linux có tương thích với Loggly không
   checkLinuxLogglyCompatibility
 
-  #check if nginx is installed on unix system
-  checkNginxDetails
+  #kiểm tra nginx đã được cài đặt trên hệ thống unix chưa
+  kiemTraChiTietNginx
 
   NGINX_ENV_VALIDATED="true"
 }
 
-# executing the script for loggly to install and configure syslog.
-installLogglyConfForNginx() {
-  #log message indicating starting of Loggly configuration
-  logMsgToConfigSysLog "INFO" "INFO: Initiating Configure Loggly for Nginx."
+# thực thi script để cài đặt và cấu hình syslog cho loggly.
+caiDatCauHinhLogglyChoNginx() {
+  #ghi log thông báo bắt đầu cấu hình Loggly cho Nginx
+  logMsgToConfigSysLog "INFO" "THÔNG TIN: Bắt đầu cấu hình Loggly cho Nginx."
 
-  #check if nginx environment is compatible with Loggly
+  #kiểm tra môi trường nginx có tương thích với Loggly không
   if [ "$NGINX_ENV_VALIDATED" = "false" ]; then
-    checkNginxLogglyCompatibility
+    kiemTraTuongThichNginxLoggly
   fi
 
-  #configure loggly for Linux
+  #cấu hình loggly cho Linux
   installLogglyConf
 
-  #multiple tags
-  addTagsInConfiguration
+  #nhiều tag
+  themTagVaoCauHinh
 
-  #create 21nginx.conf file
-  write21NginxConfFile
+  #tạo file 21nginx.conf
+  ghiFile21NginxConf
 
-  #check for the nginx log file size
-  checkLogFileSize $LOGGLY_NGINX_LOG_HOME/$NGINX_ACCESS_LOG_FILE $LOGGLY_NGINX_LOG_HOME/$NGINX_ERROR_LOG_FILE
+  #kiểm tra kích thước file log nginx
+  kiemTraKichThuocFileLog $LOGGLY_NGINX_LOG_HOME/$NGINX_ACCESS_LOG_FILE $LOGGLY_NGINX_LOG_HOME/$NGINX_ERROR_LOG_FILE
 
-  #verify if the nginx logs made it to loggly
-  checkIfNginxLogsMadeToLoggly
+  #kiểm tra log nginx đã gửi lên loggly chưa
+  kiemTraLogNginxDaGuiLenLoggly
 
-  #log success message
-  logMsgToConfigSysLog "SUCCESS" "SUCCESS: Nginx successfully configured to send logs to Loggly."
+  #ghi log thành công
+  logMsgToConfigSysLog "SUCCESS" "THÀNH CÔNG: Đã cấu hình thành công Nginx gửi log lên Loggly."
 }
 
-#executing script to remove loggly configuration for Nginx
-removeLogglyConfForNginx() {
-  logMsgToConfigSysLog "INFO" "INFO: Initiating rollback."
+#thực thi script để gỡ cấu hình loggly cho Nginx
+goCauHinhLogglyChoNginx() {
+  logMsgToConfigSysLog "INFO" "THÔNG TIN: Bắt đầu hoàn tác."
 
-  #check if the user has root permission to run this script
+  #kiểm tra quyền root để chạy script này
   checkIfUserHasRootPrivileges
 
-  #check if the OS is supported by the script. If no, then exit
+  #kiểm tra hệ điều hành có được hỗ trợ không. Nếu không thì thoát
   checkIfSupportedOS
 
-  #check if nginx is installed on unix system
-  checkNginxDetails
+  #kiểm tra nginx đã được cài đặt trên hệ thống unix chưa
+  kiemTraChiTietNginx
 
-  #remove 21nginx.conf file
-  remove21NginxConfFile
+  #gỡ file 21nginx.conf
+  xoaFile21NginxConf
 
-  logMsgToConfigSysLog "INFO" "INFO: Rollback completed."
+  logMsgToConfigSysLog "INFO" "THÔNG TIN: Đã hoàn tất hoàn tác."
 }
 
-#identify if nginx is installed on your system and is available as a service
-checkNginxDetails() {
-  #verify if nginx is installed as service
+#xác định nginx đã được cài đặt và hoạt động như một dịch vụ chưa
+kiemTraChiTietNginx() {
+  #kiểm tra nginx được cài đặt như dịch vụ
   if [ -f /etc/init.d/$SERVICE ]; then
-    logMsgToConfigSysLog "INFO" "INFO: Nginx is present as a service."
+    logMsgToConfigSysLog "INFO" "THÔNG TIN: Nginx đã được cài đặt như một dịch vụ."
   elif [[ $(which systemctl) && $(systemctl list-unit-files $SERVICE.service | grep "$SERVICE.service") ]] &>/dev/null; then
-    logMsgToConfigSysLog "INFO" "INFO: Nginx is present as a service."
+    logMsgToConfigSysLog "INFO" "THÔNG TIN: Nginx đã được cài đặt như một dịch vụ."
   else
-    logMsgToConfigSysLog "ERROR" "ERROR: Nginx is not configured as a service"
+    logMsgToConfigSysLog "ERROR" "LỖI: Nginx chưa được cấu hình như một dịch vụ"
     exit 1
   fi
 
-  #get the version of nginx installed
-  getNginxVersion
+  #lấy phiên bản nginx đã cài đặt
+  layPhienBanNginx
 
-  #set all the required nginx variables by this script
-  setNginxVariables
+  #thiết lập các biến nginx cần thiết cho script này
+  thietLapBienNginx
 }
 
-#sets nginx variables which will be used across various functions
-setNginxVariables() {
+#thiết lập biến nginx dùng ở nhiều hàm khác nhau
+thietLapBienNginx() {
   LOGGLY_NGINX_LOG_HOME=/var/log/$SERVICE
 }
 
-#gets the version of nginx installed on the unix box
-getNginxVersion() {
+#lấy phiên bản nginx đã cài đặt trên máy unix
+layPhienBanNginx() {
   NGINX_VERSION=$(nginx -v 2>&1)
   NGINX_VERSION=${NGINX_VERSION#*/}
   APP_TAG="\"nginx-version\":\"$NGINX_VERSION\""
-  logMsgToConfigSysLog "INFO" "INFO: nginx version: $NGINX_VERSION"
+  logMsgToConfigSysLog "INFO" "THÔNG TIN: phiên bản nginx: $NGINX_VERSION"
 }
 
-checkLogFileSize() {
+kiemTraKichThuocFileLog() {
   accessFileSize=$(wc -c "$1" | cut -f 1 -d ' ')
   errorFileSize=$(wc -c "$2" | cut -f 1 -d ' ')
   fileSize=$((accessFileSize + errorFileSize))
   if [ $fileSize -ge 102400000 ]; then
     if [ "$SUPPRESS_PROMPT" == "false" ]; then
       while true; do
-        read -p "WARN: There are currently large log files which may use up your allowed volume. Please rotate your logs before continuing. Would you like to continue now anyway? (yes/no)" yn
+        read -p "CẢNH BÁO: Hiện tại có các file log lớn có thể làm bạn vượt quá hạn mức. Vui lòng xoay vòng log trước khi tiếp tục. Bạn vẫn muốn tiếp tục chứ? (yes/no)" yn
         case $yn in
         [Yy]*)
-          logMsgToConfigSysLog "INFO" "INFO: Current nginx logs size is $fileSize bytes. Continuing with nginx Loggly configuration."
+          logMsgToConfigSysLog "INFO" "THÔNG TIN: Tổng kích thước log nginx hiện tại là $fileSize bytes. Tiếp tục cấu hình log cho nginx."
           break
           ;;
         [Nn]*)
-          logMsgToConfigSysLog "INFO" "INFO: Current nginx logs size is $fileSize bytes. Discontinuing with nginx Loggly configuration."
+          logMsgToConfigSysLog "INFO" "THÔNG TIN: Tổng kích thước log nginx hiện tại là $fileSize bytes. Dừng cấu hình log cho nginx."
           exit 1
           break
           ;;
-        *) echo "Please answer yes or no." ;;
+        *) echo "Vui lòng trả lời yes hoặc no." ;;
         esac
       done
     else
-      logMsgToConfigSysLog "WARN" "WARN: There are currently large log files which may use up your allowed volume."
-      logMsgToConfigSysLog "INFO" "INFO: Current nginx logs size is $fileSize bytes. Continuing with nginx Loggly configuration."
+      logMsgToConfigSysLog "WARN" "CẢNH BÁO: Hiện tại có các file log lớn có thể làm bạn vượt quá hạn mức."
+      logMsgToConfigSysLog "INFO" "THÔNG TIN: Tổng kích thước log nginx hiện tại là $fileSize bytes. Tiếp tục cấu hình log cho nginx."
     fi
   elif [ $fileSize -eq 0 ]; then
-    logMsgToConfigSysLog "WARN" "WARN: There are no recent logs from nginx there so won't be any sent to Loggly. You can generate some logs by visiting a page on your web server."
+    logMsgToConfigSysLog "WARN" "CẢNH BÁO: Không có log nginx gần đây nên sẽ không có log nào gửi lên Loggly. Bạn có thể tạo log bằng cách truy cập một trang trên web server."
     exit 1
   fi
 }
 
-write21NginxConfFile() {
-  #Create nginx syslog config file if it doesn't exist
-  echo "INFO: Checking if nginx sysconf file $NGINX_SYSLOG_CONFFILE exist."
+ghiFile21NginxConf() {
+  #Tạo file cấu hình syslog cho nginx nếu chưa tồn tại
+  echo "THÔNG TIN: Kiểm tra file cấu hình syslog $NGINX_SYSLOG_CONFFILE."
   if [ -f "$NGINX_SYSLOG_CONFFILE" ]; then
-    logMsgToConfigSysLog "WARN" "WARN: nginx syslog file $NGINX_SYSLOG_CONFFILE already exist."
+    logMsgToConfigSysLog "WARN" "CẢNH BÁO: File syslog nginx $NGINX_SYSLOG_CONFFILE đã tồn tại."
     if [ "$SUPPRESS_PROMPT" == "false" ]; then
       while true; do
-        read -p "Do you wish to override $NGINX_SYSLOG_CONFFILE? (yes/no)" yn
+        read -p "Bạn có muốn ghi đè $NGINX_SYSLOG_CONFFILE không? (yes/no)" yn
         case $yn in
         [Yy]*)
-          logMsgToConfigSysLog "INFO" "INFO: Going to back up the conf file: $NGINX_SYSLOG_CONFFILE to $NGINX_SYSLOG_CONFFILE_BACKUP"
+          logMsgToConfigSysLog "INFO" "THÔNG TIN: Sẽ sao lưu file cấu hình: $NGINX_SYSLOG_CONFFILE thành $NGINX_SYSLOG_CONFFILE_BACKUP"
           sudo mv -f $NGINX_SYSLOG_CONFFILE $NGINX_SYSLOG_CONFFILE_BACKUP
-          write21NginxFileContents
+          ghiNoiDungFile21Nginx
           break
           ;;
         [Nn]*) break ;;
-        *) echo "Please answer yes or no." ;;
+        *) echo "Vui lòng trả lời yes hoặc no." ;;
         esac
       done
     else
-      logMsgToConfigSysLog "INFO" "INFO: Going to back up the conf file: $NGINX_SYSLOG_CONFFILE to $NGINX_SYSLOG_CONFFILE_BACKUP"
+      logMsgToConfigSysLog "INFO" "THÔNG TIN: Sẽ sao lưu file cấu hình: $NGINX_SYSLOG_CONFFILE thành $NGINX_SYSLOG_CONFFILE_BACKUP"
       sudo mv -f $NGINX_SYSLOG_CONFFILE $NGINX_SYSLOG_CONFFILE_BACKUP
-      write21NginxFileContents
+      ghiNoiDungFile21Nginx
     fi
   else
-    write21NginxFileContents
+    ghiNoiDungFile21Nginx
   fi
 }
 
-addTagsInConfiguration() {
-  #split tags by comman(,)
+themTagVaoCauHinh() {
+  #tách tag bằng dấu phẩy (,)
   IFS=, read -a array <<<"$LOGGLY_FILE_TAG"
   for i in "${array[@]}"; do
     TAG="$TAG tag=\\\"$i\\\" "
   done
 }
-#function to write the contents of nginx syslog config file
-write21NginxFileContents() {
-  logMsgToConfigSysLog "INFO" "INFO: Creating file $NGINX_SYSLOG_CONFFILE"
+#hàm ghi nội dung file cấu hình syslog nginx
+ghiNoiDungFile21Nginx() {
+  logMsgToConfigSysLog "INFO" "THÔNG TIN: Tạo file $NGINX_SYSLOG_CONFFILE"
   sudo touch $NGINX_SYSLOG_CONFFILE
   sudo chmod o+w $NGINX_SYSLOG_CONFFILE
 
@@ -231,7 +231,7 @@ write21NginxFileContents() {
     #RsyslogGnuTLS
     \$DefaultNetstreamDriverCAFile $CA_FILE_PATH
     
-    # nginx access file:
+    # file access nginx:
     \$InputFileName $LOGGLY_NGINX_LOG_HOME/$NGINX_ACCESS_LOG_FILE
     \$InputFileTag nginx-access:
     \$InputFileStateFile stat-nginx-access
@@ -239,7 +239,7 @@ write21NginxFileContents() {
     \$InputFilePersistStateInterval 20000
     \$InputRunFileMonitor
 
-    #nginx Error file: 
+    #file lỗi nginx: 
     \$InputFileName $LOGGLY_NGINX_LOG_HOME/$NGINX_ERROR_LOG_FILE
     \$InputFileTag nginx-error:
     \$InputFileStateFile stat-nginx-error
@@ -247,7 +247,7 @@ write21NginxFileContents() {
     \$InputFilePersistStateInterval 20000
     \$InputRunFileMonitor
 
-    #Add a tag for nginx events
+    #Thêm tag cho sự kiện nginx
     \$template LogglyFormatNginx,\"<%pri%>%protocol-version% %timestamp:::date-rfc3339% %HOSTNAME% %app-name% %procid% %msgid% [$LOGGLY_AUTH_TOKEN@41058 $TAG] %msg%\n\"
 
     if \$programname == 'nginx-access' then @@logs-01.loggly.com:6514;LogglyFormatNginx
@@ -257,7 +257,7 @@ write21NginxFileContents() {
     "
 
   imfileStrNonTls=$commonContent"
-    # nginx access file:
+    # file access nginx:
     \$InputFileName $LOGGLY_NGINX_LOG_HOME/$NGINX_ACCESS_LOG_FILE
     \$InputFileTag nginx-access:
     \$InputFileStateFile stat-nginx-access
@@ -265,7 +265,7 @@ write21NginxFileContents() {
     \$InputFilePersistStateInterval 20000
     \$InputRunFileMonitor
 
-    #nginx Error file: 
+    #file lỗi nginx: 
     \$InputFileName $LOGGLY_NGINX_LOG_HOME/$NGINX_ERROR_LOG_FILE
     \$InputFileTag nginx-error:
     \$InputFileStateFile stat-nginx-error
@@ -273,7 +273,7 @@ write21NginxFileContents() {
     \$InputFilePersistStateInterval 20000
     \$InputRunFileMonitor
 
-    #Add a tag for nginx events
+    #Thêm tag cho sự kiện nginx
     \$template LogglyFormatNginx,\"<%pri%>%protocol-version% %timestamp:::date-rfc3339% %HOSTNAME% %app-name% %procid% %msgid% [$LOGGLY_AUTH_TOKEN@41058 $TAG] %msg%\n\"
 
     if \$programname == 'nginx-access' then @@logs-01.loggly.com:514;LogglyFormatNginx
@@ -286,7 +286,7 @@ write21NginxFileContents() {
     imfileStr=$imfileStrNonTls
   fi
 
-  #change the nginx-21 file to variable from above and also take the directory of the nginx log file.
+  #thay đổi file nginx-21 thành biến ở trên và lấy thư mục log nginx.
   sudo cat <<EOIPFW >>$NGINX_SYSLOG_CONFFILE
 $imfileStr
 EOIPFW
@@ -294,8 +294,8 @@ EOIPFW
   restartRsyslog
 }
 
-#checks if the nginx logs made to loggly
-checkIfNginxLogsMadeToLoggly() {
+#kiểm tra log nginx đã gửi lên loggly chưa
+kiemTraLogNginxDaGuiLenLoggly() {
   counter=1
   maxCounter=10
 
@@ -314,39 +314,39 @@ checkIfNginxLogsMadeToLoggly() {
 
   queryParam="$TAGS&from=-15m&until=now&size=1"
   queryUrl="$LOGGLY_ACCOUNT_URL/apiv2/search?q=$queryParam"
-  logMsgToConfigSysLog "INFO" "INFO: Search URL: $queryUrl"
+  logMsgToConfigSysLog "INFO" "THÔNG TIN: URL tìm kiếm: $queryUrl"
 
-  logMsgToConfigSysLog "INFO" "INFO: Getting initial nginx log count."
-  #get the initial count of nginx logs for past 15 minutes
+  logMsgToConfigSysLog "INFO" "THÔNG TIN: Đang lấy số lượng log nginx ban đầu."
+  #lấy số lượng log nginx 15 phút trước
   searchAndFetch nginxInitialLogCount "$queryUrl"
 
-  logMsgToConfigSysLog "INFO" "INFO: Verifying if the nginx logs made it to Loggly."
-  logMsgToConfigSysLog "INFO" "INFO: Verification # $counter of total $maxCounter."
-  #get the final count of nginx logs for past 15 minutes
+  logMsgToConfigSysLog "INFO" "THÔNG TIN: Đang kiểm tra log nginx đã gửi lên Loggly chưa."
+  logMsgToConfigSysLog "INFO" "THÔNG TIN: Lần kiểm tra # $counter trên tổng số $maxCounter."
+  #lấy số lượng log nginx 15 phút trước
   searchAndFetch nginxLatestLogCount "$queryUrl"
   let counter=$counter+1
 
   while [ "$nginxLatestLogCount" -le "$nginxInitialLogCount" ]; do
-    echo "INFO: Did not find the test log message in Loggly's search yet. Waiting for 30 secs."
+    echo "THÔNG TIN: Chưa tìm thấy log kiểm tra trên Loggly. Đợi 30 giây."
     sleep 30
-    echo "INFO: Done waiting. Verifying again."
-    logMsgToConfigSysLog "INFO" "INFO: Verification # $counter of total $maxCounter."
+    echo "THÔNG TIN: Đã đợi xong. Kiểm tra lại."
+    logMsgToConfigSysLog "INFO" "THÔNG TIN: Lần kiểm tra # $counter trên tổng số $maxCounter."
     searchAndFetch nginxLatestLogCount "$queryUrl"
     let counter=$counter+1
     if [ "$counter" -gt "$maxCounter" ]; then
-      logMsgToConfigSysLog "ERROR" "ERROR: Nginx logs did not make to Loggly in time. Please check network and firewall settings and retry."
+      logMsgToConfigSysLog "ERROR" "LỖI: Log nginx không gửi lên Loggly đúng hạn. Vui lòng kiểm tra kết nối mạng và firewall rồi thử lại."
       exit 1
     fi
   done
 
   if [ "$nginxLatestLogCount" -gt "$nginxInitialLogCount" ]; then
-    logMsgToConfigSysLog "INFO" "INFO: Nginx logs successfully transferred to Loggly! You are now sending Nginx logs to Loggly."
-    checkIfLogsAreParsedInLoggly
+    logMsgToConfigSysLog "INFO" "THÔNG TIN: Đã gửi log nginx lên Loggly thành công! Bạn đã gửi log nginx lên Loggly."
+    kiemTraLogDaDuocParseTrenLoggly
   fi
 }
 
-#verifying if the logs are being parsed or not
-checkIfLogsAreParsedInLoggly() {
+#kiểm tra log đã được parse đúng trên Loggly chưa
+kiemTraLogDaDuocParseTrenLoggly() {
   nginxInitialLogCount=0
   TAG_PARSER=
   IFS=, read -a array <<<"$LOGGLY_FILE_TAG"
@@ -356,37 +356,37 @@ checkIfLogsAreParsedInLoggly() {
   queryParam="logtype%3Anginx$TAG_PARSER&from=-15m&until=now&size=1"
   queryUrl="$LOGGLY_ACCOUNT_URL/apiv2/search?q=$queryParam"
   searchAndFetch nginxInitialLogCount "$queryUrl"
-  logMsgToConfigSysLog "INFO" "INFO: Verifying if the Nginx logs are parsed in Loggly."
+  logMsgToConfigSysLog "INFO" "THÔNG TIN: Đang kiểm tra log Nginx đã được parse trên Loggly chưa."
   if [ "$nginxInitialLogCount" -gt 0 ]; then
-    logMsgToConfigSysLog "INFO" "INFO: Nginx logs successfully parsed in Loggly!"
+    logMsgToConfigSysLog "INFO" "THÔNG TIN: Log Nginx đã được parse thành công trên Loggly!"
   else
-    logMsgToConfigSysLog "WARN" "WARN: We received your logs but they do not appear to use one of our automatically parsed formats. You can still do full text search and counts on these logs, but you won't be able to use our field explorer. Please consider switching to one of our automated formats https://www.loggly.com/docs/automated-parsing/"
+    logMsgToConfigSysLog "WARN" "CẢNH BÁO: Đã nhận được log nhưng chưa ở đúng định dạng tự động parse của Loggly. Bạn vẫn có thể tìm kiếm toàn văn và đếm log trên các log này."
   fi
 }
 
-#remove 21nginx.conf file
-remove21NginxConfFile() {
-  echo "INFO: Deleting the loggly nginx syslog conf file."
+#xóa file 21nginx.conf
+xoaFile21NginxConf() {
+  echo "THÔNG TIN: Đang xóa file cấu hình syslog nginx của loggly."
   if [ -f "$NGINX_SYSLOG_CONFFILE" ]; then
     sudo rm -rf "$NGINX_SYSLOG_CONFFILE"
   fi
-  echo "INFO: Removed all the modified files."
+  echo "THÔNG TIN: Đã xóa tất cả file đã chỉnh sửa."
   restartRsyslog
 }
 
-#display usage syntax
-usage() {
+#hiển thị cú pháp sử dụng
+huongDanSuDung() {
   cat <<EOF
-usage: configure-nginx [-a loggly auth account or subdomain] [-t loggly token (optional)] [-u username] [-p password (optional)] [-tag filetag1,filetag2 (optional)] [-s suppress prompts {optional)] [--insecure {to send logs without TLS} (optional)]
-usage: configure-nginx [-a loggly auth account or subdomain] [-r to rollback]
-usage: configure-nginx [-h for help]
+cách dùng: configure-nginx [-a tài khoản hoặc subdomain loggly] [-t token loggly (tùy chọn)] [-u tên đăng nhập] [-p mật khẩu (tùy chọn)] [-tag filetag1,filetag2 (tùy chọn)] [-s bỏ qua xác nhận {tùy chọn)] [-r hoàn tác]
+cách dùng: configure-nginx [-a tài khoản hoặc subdomain loggly] [-r để hoàn tác]
+cách dùng: configure-nginx [-h để xem trợ giúp]
 EOF
 }
 
-##########  Get Inputs from User - Start  ##########
+##########  Lấy thông tin đầu vào từ người dùng - Bắt đầu  ##########
 
 if [ $# -eq 0 ]; then
-  usage
+  huongDanSuDung
   exit
 else
   while [ "$1" != "" ]; do
@@ -399,12 +399,12 @@ else
     -a | --account)
       shift
       LOGGLY_ACCOUNT=$1
-      echo "Loggly account or subdomain: $LOGGLY_ACCOUNT"
+      echo "Tài khoản hoặc subdomain Loggly: $LOGGLY_ACCOUNT"
       ;;
     -u | --username)
       shift
       LOGGLY_USERNAME=$1
-      echo "Username is set"
+      echo "Đã thiết lập tên đăng nhập"
       ;;
     -p | --password)
       shift
@@ -427,7 +427,7 @@ else
       LOGGLY_SYSLOG_PORT=514
       ;;
     -h | --help)
-      usage
+      huongDanSuDung
       exit
       ;;
     esac
@@ -439,11 +439,11 @@ if [ "$LOGGLY_ACCOUNT" != "" -a "$LOGGLY_USERNAME" != "" ]; then
   if [ "$LOGGLY_PASSWORD" = "" ]; then
     getPassword
   fi
-  installLogglyConfForNginx
+  caiDatCauHinhLogglyChoNginx
 elif [ "$LOGGLY_ROLLBACK" != "" -a "$LOGGLY_ACCOUNT" != "" ]; then
-  removeLogglyConfForNginx
+  goCauHinhLogglyChoNginx
 else
-  usage
+  huongDanSuDung
 fi
 
-##########  Get Inputs from User - End  ##########
+##########  Lấy thông tin đầu vào từ người dùng - Kết thúc  ##########
